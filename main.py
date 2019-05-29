@@ -1,13 +1,20 @@
 #!/usr/bin/python3
+import math
 import subprocess
 import datetime
 import psutil
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # -----------------------------------------------------------------------------
 # Script to generate plots regarding various system/network metrics as function
 # of time. Designed to be used as cron/Windows scheduler job
 # -----------------------------------------------------------------------------
+COLUMNS = ['Download speed', 'Upload speed', 'Packages out',
+           'Packages in', 'Errors in', 'Errors out', 'Drop in',
+           'Drop out', 'CPU perc use', 'Average load',
+           'Free memory (bytes)', 'Percent free memory', 'Datetime']
 
 
 def get_speed_metrics():
@@ -103,13 +110,25 @@ def update_df():
     metrics = [float(item) for metric in metrics for item in metric]
     metrics.append(datetime.datetime.now())
 
-    columns = ['Download speed', 'Upload speed', 'Packages out',
-               'Packages in', 'Errors in', 'Errors out', 'Drop in',
-               'Drop out', 'CPU perc use', 'Average load',
-               'Free memory (bytes)', 'Percent free memory', 'Datetime']
-
-    metrics = pd.DataFrame([metrics], columns=columns)
+    metrics = pd.DataFrame([metrics], columns=COLUMNS)
     df = df.append(metrics, ignore_index=True, sort=True)
     df = df.set_index('Datetime', inplace=False)
     df.to_csv('metrics.csv', sep=',', index=True, header=True)
 # -----------------------------------------------------------------------------
+
+
+def generate_plots():
+    '''
+    generates plots for all metrics vs datetime
+
+    #(TODO): figure out how to set x-axis to be more user friendly
+    '''
+    df = pd.read_csv('metrics.csv', encoding='utf-8')
+    df['Datetime'] = pd.to_datetime(df['Datetime']).dt.strftime('%H:%M')
+
+    # plot all metrics as function of datetime
+    fig, axs = plt.subplots(nrows=4, ncols=3)
+    for col in enumerate(COLUMNS[:-1]):
+        sns.lineplot(x=df['Datetime'], y=df[col[1]], data=df,
+                     ax=axs[col[0] % 4][math.floor(col[0]/4)])
+    plt.show()
